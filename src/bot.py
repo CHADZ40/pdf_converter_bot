@@ -6,6 +6,8 @@ import shutil
 import subprocess
 import tempfile
 import socket
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
 
@@ -351,6 +353,19 @@ def _tcp_port_open(host: str, port: int, timeout: float = 0.6) -> bool:
         return False
 
 
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        if self.path != "/healthz":
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"ok")
+
+    def log_message(self, format: str, *args: object) -> None:
+        return
+
+
 def main() -> None:
     token = os.getenv("BOT_TOKEN")
     if not token:
@@ -401,6 +416,11 @@ def main() -> None:
     app.add_handler(conv)
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(CommandHandler("start", start))
+
+    port = int(os.getenv("PORT", "8080"))
+    health_server = ThreadingHTTPServer(("0.0.0.0", port), HealthHandler)
+    threading.Thread(target=health_server.serve_forever, daemon=True).start()
+    logger.info("Health endpoint listening on port %s", port)
 
     app.run_polling()
 

@@ -110,7 +110,7 @@ python bot.py
 
 ## Always-on deployment
 
-The bot is a long-running polling process. It runs only while the machine or cloud service running `python bot.py` is online; `LOCAL_BOT_API` selects the Telegram API endpoint and does not host the bot. To keep it available while your laptop is off, deploy it as an always-on background worker or server, set `BOT_TOKEN` in that host's environment variables, and use `python bot.py` as its start command. Do not set `LOCAL_BOT_API` unless that host can reach your own Bot API server. Install LibreOffice on the host if you need Office document conversion.
+The bot is a long-running polling process. It runs only while the machine or cloud service running `python bot.py` is online; `LOCAL_BOT_API` selects the Telegram API endpoint and does not host the bot. For Choreo service deployment, use `python bot.py` as the start command and expose the port specified by `PORT` (defaults to `8080`); the process serves `GET /healthz` for service health checks while polling Telegram. Set `BOT_TOKEN` in Choreo's environment-variable or secret settings. Do not set `LOCAL_BOT_API` unless that host can reach your own Bot API server. Install LibreOffice on the host if you need Office document conversion.
 
 ## Environment variables
 
@@ -118,6 +118,7 @@ The bot is a long-running polling process. It runs only while the machine or clo
 | --- | --- | --- |
 | `BOT_TOKEN` | Yes | Telegram bot token from BotFather |
 | `LOCAL_BOT_API` | No | Optional URL of a separate Telegram Bot API server; unset uses Telegram's public API |
+| `PORT` | No | HTTP health-check port for service deployments; defaults to `8080` |
 
 ## Requirements
 

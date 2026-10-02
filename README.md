@@ -76,14 +76,21 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-5. Add your Telegram credentials:
+5. Add your Telegram credentials to `.env`:
 
 ```env
 BOT_TOKEN=your_telegram_bot_token_here
-LOCAL_BOT_API=http://127.0.0.1:8081
 ```
 
-> `LOCAL_BOT_API` is optional and only needed if you are testing against a local Bot API server.
+Load those values into your local shell before starting the bot:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+`LOCAL_BOT_API` is optional. Leave it unset to use Telegram's public Bot API. Set it only when you run a separate Telegram Bot API server that the bot can reach. On a cloud host, add `BOT_TOKEN` in the host's environment-variable or secrets settings instead of uploading `.env`.
 
 6. Install LibreOffice for Office document conversion.
 
@@ -97,16 +104,20 @@ python bot.py
 
 1. Start the bot with `/start`.
 2. Upload a document or image.
-3. Enter a desired PDF filename.
+3. Keep the uploaded filename or choose a new PDF filename.
 4. Receive the converted PDF in Telegram.
 5. Use `/cancel` to reset the current flow.
+
+## Always-on deployment
+
+The bot is a long-running polling process. It runs only while the machine or cloud service running `python bot.py` is online; `LOCAL_BOT_API` selects the Telegram API endpoint and does not host the bot. To keep it available while your laptop is off, deploy it as an always-on background worker or server, set `BOT_TOKEN` in that host's environment variables, and use `python bot.py` as its start command. Do not set `LOCAL_BOT_API` unless that host can reach your own Bot API server. Install LibreOffice on the host if you need Office document conversion.
 
 ## Environment variables
 
 | Variable | Required | Description |
 | --- | --- | --- |
 | `BOT_TOKEN` | Yes | Telegram bot token from BotFather |
-| `LOCAL_BOT_API` | No | Optional local API endpoint for testing |
+| `LOCAL_BOT_API` | No | Optional URL of a separate Telegram Bot API server; unset uses Telegram's public API |
 
 ## Requirements
 

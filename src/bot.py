@@ -250,10 +250,58 @@ async def receive_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     suggested = sanitize_filename(Path(input_path.name).stem)
     await msg.reply_text(
         "Got it ✅\n"
-        "Now send the PDF filename you want (without .pdf).\n"
-        f"Example: {suggested}"
+        "Keep the original filename or change it?\n"
+        f"Reply KEEP to use {suggested}.pdf, or CHANGE to choose a new name."
     )
     return WAIT_NAME
+
+
+async def receive_name_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    msg = update.message
+    choice = (msg.text or "").strip().casefold()
+
+    if choice in {"keep", "same", "original"}:
+        return await keep_original_name_and_convert(update, context)
+    if choice in {"change", "rename", "new"}:
+        await msg.reply_text("Send the PDF filename you want (without .pdf).")
+        return WAIT_NAME
+
+    return await receive_name_and_convert(update, context)
+
+
+async def keep_original_name_and_convert(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    msg = update.message
+    work_dir_s = context.user_data.get("work_dir")
+    input_path_s = context.user_data.get("input_path")
+    if not work_dir_s or not input_path_s:
+        await msg.reply_text("I lost the file context. Send the file again.")
+        cleanup_user_state(context)
+        return WAIT_FILE
+
+    work_dir = Path(work_dir_s)
+    input_path = Path(input_path_s)
+    if not work_dir.exists() or not input_path.exists():
+        await msg.reply_text("I lost the file context. Send the file again.")
+        cleanup_user_state(context)
+        return WAIT_FILE
+
+    await msg.reply_text("Converting… ⏳")
+    try:
+        pdf_path = await asyncio.to_thread(convert_to_pdf, input_path, work_dir)
+        out_name = f"{sanitize_filename(input_path.stem)}.pdf"
+        with open(pdf_path, "rb") as f:
+            await msg.reply_document(document=InputFile(f, filename=out_name))
+        await msg.reply_text("Done ✅ Send another file anytime.")
+    except subprocess.TimeoutExpired:
+        await msg.reply_text("Conversion timed out. Try a smaller/simple file.")
+    except Exception as e:
+        await msg.reply_text(f"Conversion failed: {e}")
+    finally:
+        cleanup_user_state(context)
+
+    return WAIT_FILE
 
 
 async def receive_name_and_convert(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -341,7 +389,7 @@ def main() -> None:
         ],
         states={
             WAIT_FILE: [MessageHandler(file_filter, receive_file)],
-            WAIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name_and_convert)],
+            WAIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name_choice)],
         },
         fallbacks=[
             CommandHandler("cancel", cancel),
